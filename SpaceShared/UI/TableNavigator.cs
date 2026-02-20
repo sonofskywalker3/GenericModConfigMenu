@@ -184,8 +184,11 @@ namespace SpaceShared.UI
             bool dpadUp = pad.DPad.Up == ButtonState.Pressed && this.PrevPad.DPad.Up == ButtonState.Released;
             bool dpadDown = pad.DPad.Down == ButtonState.Pressed && this.PrevPad.DPad.Down == ButtonState.Released;
 
-            // Left stick discrete navigation with hold-to-repeat
-            float lsY = pad.ThumbSticks.Left.Y;
+            // Left stick or right stick discrete navigation with hold-to-repeat
+            // (Right stick also drives row navigation to prevent bounce from direct scroll handlers)
+            float lsY = Math.Abs(pad.ThumbSticks.Left.Y) >= Math.Abs(pad.ThumbSticks.Right.Y)
+                ? pad.ThumbSticks.Left.Y
+                : pad.ThumbSticks.Right.Y;
             int newStickDir = 0;
             if (lsY > StickThreshold) newStickDir = 1;       // Up
             else if (lsY < -StickThreshold) newStickDir = 2; // Down

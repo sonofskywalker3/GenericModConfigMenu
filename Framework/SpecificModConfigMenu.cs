@@ -493,7 +493,6 @@ namespace GenericModConfigMenu.Framework
             return false;
         }
 
-        private int scrollCounter = 0;
         /// <inheritdoc />
         public override void update(GameTime time)
         {
@@ -504,16 +503,7 @@ namespace GenericModConfigMenu.Framework
             if (!this.IsBindingKey)
                 this.Navigator?.SnapAndScroll();
 
-            // TODO: This will be different if a dropdown is open
-            if (Game1.input.GetGamePadState().ThumbSticks.Right.Y != 0)
-            {
-                if (++scrollCounter == 5)
-                {
-                    scrollCounter = 0;
-                    this.Table.Scrollbar.ScrollBy(Math.Sign(Game1.input.GetGamePadState().ThumbSticks.Right.Y) * 120 / -this.ScrollSpeed);
-                }
-            }
-            else scrollCounter = 0;
+            // Right stick scrolling is handled by TableNavigator (navigates rows, EnsureFocusedVisible scrolls)
 
             if (this.ExitOnNextUpdate)
                 this.Cancel();
