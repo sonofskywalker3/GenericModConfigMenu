@@ -74,6 +74,7 @@ namespace GenericModConfigMenu.Framework
         *********/
         private RootElement Ui;
         private readonly Table Table;
+        private TableNavigator Navigator;
 
         /*********
         ** Accessors
@@ -196,6 +197,16 @@ namespace GenericModConfigMenu.Framework
                 // This hack lets gamepad cursor movement work without a harmony patch
                 Mod.instance.Helper.Reflection.GetField<bool>(Game1.activeClickableMenu, "titleInPosition").SetValue(false);
             }
+
+            // Controller navigation
+            this.Navigator = new TableNavigator(this.Table)
+            {
+                OnBack = () =>
+                {
+                    Game1.playSound("bigDeSelect");
+                    Mod.ActiveConfigMenu = null;
+                }
+            };
         }
 
         /// <inheritdoc />
@@ -253,6 +264,7 @@ namespace GenericModConfigMenu.Framework
         public override void update(GameTime time)
         {
             base.update(time);
+            this.Navigator?.Update();
             this.Ui.Update();
 
             // Hide placeholder when typing
@@ -495,6 +507,8 @@ namespace GenericModConfigMenu.Framework
             {
                 this.ScrollRow = 0;
             }
+
+            this.Navigator?.InvalidateRows();
         }
     }
 }

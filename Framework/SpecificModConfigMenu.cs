@@ -34,6 +34,7 @@ namespace GenericModConfigMenu.Framework
 
         private RootElement Ui = new();
         private readonly Table Table;
+        private TableNavigator Navigator;
         private readonly List<Label> OptHovers = new();
 
         /// <summary>Whether the user hit escape.</summary>
@@ -168,6 +169,12 @@ namespace GenericModConfigMenu.Framework
             this.Table.ForceUpdateEvenHidden();
 
             RefreshKeybindColor();
+
+            // Controller navigation
+            this.Navigator = new TableNavigator(this.Table)
+            {
+                OnBack = () => this.Cancel()
+            };
         }
 
         public SpecificModConfigMenu(ModConfig config, int scrollSpeed, string page, Action<string> openPage, Action returnToList)
@@ -457,6 +464,12 @@ namespace GenericModConfigMenu.Framework
 
             // We need to update widgets at least once so ComplexModOptionWidget's get initialized
             this.Table.ForceUpdateEvenHidden();
+
+            // Controller navigation
+            this.Navigator = new TableNavigator(this.Table)
+            {
+                OnBack = () => this.Cancel()
+            };
         }
 
         /// <inheritdoc />
@@ -495,6 +508,8 @@ namespace GenericModConfigMenu.Framework
         public override void update(GameTime time)
         {
             base.update(time);
+            if (!this.IsBindingKey)
+                this.Navigator?.Update();
             this.Ui.Update();
 
             // TODO: This will be different if a dropdown is open
