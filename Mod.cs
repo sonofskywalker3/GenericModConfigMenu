@@ -321,7 +321,7 @@ namespace GenericModConfigMenu
 
             configMenu.Register(
                 mod: this.ModManifest,
-                reset: () => this.Config = new OwnModConfig(),
+                reset: () => { this.Config = new OwnModConfig(); TableNavigator.Enabled = this.Config.SnapNavigation; },
                 save: () => this.Helper.WriteConfig(this.Config),
                 titleScreenOnly: false
             );
@@ -344,6 +344,21 @@ namespace GenericModConfigMenu
                 getValue: () => this.Config.OpenMenuKey,
                 setValue: value => this.Config.OpenMenuKey = value
             );
+
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: I18n.Options_SnapNavigation_Name,
+                tooltip: I18n.Options_SnapNavigation_Desc,
+                getValue: () => this.Config.SnapNavigation,
+                setValue: value =>
+                {
+                    this.Config.SnapNavigation = value;
+                    TableNavigator.Enabled = value;
+                }
+            );
+
+            // Sync static flag from config on startup
+            TableNavigator.Enabled = this.Config.SnapNavigation;
 
             var BetterGameMenu = this.Helper.ModRegistry.GetApi<IBetterGameMenuApi>("leclair.bettergamemenu");
             BetterGameMenu?.OnTabContextMenu(evt =>

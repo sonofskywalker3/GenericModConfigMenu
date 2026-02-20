@@ -46,6 +46,9 @@ namespace SpaceShared.UI
         /*********
         ** Accessors
         *********/
+        /// <summary>When false, snap navigation is completely disabled regardless of gamepad setting.</summary>
+        public static bool Enabled { get; set; } = true;
+
         /// <summary>Called when B is pressed outside a dropdown. Menu should go back/close.</summary>
         public Action OnBack { get; set; }
 
@@ -80,7 +83,7 @@ namespace SpaceShared.UI
         /// <summary>Process gamepad input. Call BEFORE Ui.Update() in menu.update().</summary>
         public void HandleInput()
         {
-            if (!Game1.options.gamepadControls)
+            if (!Enabled || !Game1.options.gamepadControls)
                 return;
 
             if (this.NeedsRebuild)
@@ -119,7 +122,7 @@ namespace SpaceShared.UI
         /// <summary>Snap cursor and ensure scroll position. Call AFTER Ui.Update() so element positions are fresh.</summary>
         public void SnapAndScroll()
         {
-            if (!Game1.options.gamepadControls)
+            if (!Enabled || !Game1.options.gamepadControls)
                 return;
 
             if (this.FocusOnButtons)
