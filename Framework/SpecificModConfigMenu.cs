@@ -114,9 +114,6 @@ namespace GenericModConfigMenu.Framework
                     switch (opt)
                     {
                         case SimpleModOption<SButton> option:
-                            if (Constants.TargetPlatform == GamePlatform.Android)
-                                continue; // TODO: Support virtual keyboard input.
-
                             optionElement = new Label
                             {
                                 String = option.FormatValue(),
@@ -127,9 +124,6 @@ namespace GenericModConfigMenu.Framework
                             break;
 
                         case SimpleModOption<KeybindList> option:
-                            if (Constants.TargetPlatform == GamePlatform.Android)
-                                continue; // TODO: Support virtual keyboard input.
-
                             optionElement = new Label
                             {
                                 String = option.FormatValue(),
@@ -238,9 +232,6 @@ namespace GenericModConfigMenu.Framework
                         break;
 
                     case SimpleModOption<SButton> option:
-                        if (Constants.TargetPlatform == GamePlatform.Android)
-                            continue; // TODO: Support virtual keyboard input.
-
                         optionElement = new Label
                         {
                             String = option.FormatValue(),
@@ -250,9 +241,6 @@ namespace GenericModConfigMenu.Framework
                         break;
 
                     case SimpleModOption<KeybindList> option:
-                        if (Constants.TargetPlatform == GamePlatform.Android)
-                            continue; // TODO: Support virtual keyboard input.
-
                         optionElement = new Label
                         {
                             String = option.FormatValue(),
@@ -556,7 +544,7 @@ namespace GenericModConfigMenu.Framework
             this.drawMouse(b);
 
             // hover tooltips
-            if (Constants.TargetPlatform != GamePlatform.Android && GetChildMenu() == null)
+            if (GetChildMenu() == null)
             {
                 foreach (var label in this.OptHovers)
                 {

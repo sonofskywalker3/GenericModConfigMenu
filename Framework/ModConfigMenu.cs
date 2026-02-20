@@ -295,7 +295,7 @@ namespace GenericModConfigMenu.Framework
             if (this.InGame)
                 this.drawMouse(b);
 
-            if (Constants.TargetPlatform != GamePlatform.Android && GetChildMenu() == null)
+            if (GetChildMenu() == null)
             {
                 foreach (var label in this.LabelsWithTooltips)
                 {
