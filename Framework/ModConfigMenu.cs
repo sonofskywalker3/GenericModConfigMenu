@@ -85,8 +85,8 @@ namespace GenericModConfigMenu.Framework
         /// <summary>The number of field rows to offset when scrolling a config menu.</summary>
         private readonly int ScrollSpeed;
 
-        /// <summary>Open the config UI for a specific mod.</summary>
-        private readonly Action<IManifest, int> OpenModMenu;
+        /// <summary>Open the config UI for a specific mod. Parameters: manifest, scrollRow, focusedRow.</summary>
+        private readonly Action<IManifest, int, int> OpenModMenu;
         private bool InGame => Context.IsWorldReady;
 
         private List<Label> LabelsWithTooltips = new();
@@ -128,7 +128,7 @@ namespace GenericModConfigMenu.Framework
         /// <param name="keybindsTexture">The icon texture for the keybinds menu.</param>
         /// <param name="configs">The mod configurations to display.</param>
         /// <param name="scrollTo">The initial scroll position, represented by the row index at the top of the visible area.</param>
-        public ModConfigMenu(int scrollSpeed, Action<IManifest, int> openModMenu, Action<int> openKeybindsMenu, ModConfigManager configs, Texture2D keybindsTexture, int? scrollTo = null)
+        public ModConfigMenu(int scrollSpeed, Action<IManifest, int, int> openModMenu, Action<int> openKeybindsMenu, ModConfigManager configs, Texture2D keybindsTexture, int? scrollTo = null, int? focusRow = null)
         {
             this.ScrollSpeed = scrollSpeed;
             this.OpenModMenu = openModMenu;
@@ -207,6 +207,17 @@ namespace GenericModConfigMenu.Framework
                     Mod.ActiveConfigMenu = null;
                 }
             };
+
+            if (focusRow.HasValue)
+                this.Navigator.CurrentFocusedRow = focusRow.Value;
+        }
+
+        /// <inheritdoc />
+        /// <remarks>Override prevents the base class from closing the menu on B press.
+        /// B is handled by the TableNavigator via update() instead.</remarks>
+        public override void receiveGamePadButton(Buttons b)
+        {
+            // intentionally empty — TableNavigator.HandleB() handles B via OnBack callback
         }
 
         /// <inheritdoc />
@@ -361,7 +372,7 @@ namespace GenericModConfigMenu.Framework
             Log.Trace("Changing to mod config page for mod " + modManifest.UniqueID);
             Game1.playSound("bigSelect");
 
-            this.OpenModMenu(modManifest, this.ScrollRow);
+            this.OpenModMenu(modManifest, this.ScrollRow, this.Navigator?.CurrentFocusedRow ?? -1);
         }
 
         /// <summary>Called when the search text changes.</summary>

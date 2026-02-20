@@ -52,6 +52,13 @@ namespace SpaceShared.UI
         /// <summary>Bottom action buttons (Cancel, Reset, Save, Save&Close). Set by the menu.</summary>
         public Label[] BottomButtons { get; set; }
 
+        /// <summary>Get or set the currently focused row index (for save/restore across menu transitions).</summary>
+        public int CurrentFocusedRow
+        {
+            get => this.FocusedRow;
+            set => this.FocusedRow = value;
+        }
+
 
         /*********
         ** Public methods
@@ -59,6 +66,9 @@ namespace SpaceShared.UI
         public TableNavigator(Table table)
         {
             this.Table = table;
+            // Initialize PrevPad to current state so a freshly created navigator
+            // doesn't see phantom button edges (e.g. B held from previous menu).
+            this.PrevPad = Game1.input.GetGamePadState();
         }
 
         /// <summary>Mark the interactive rows list as stale (call after Table rows change).</summary>

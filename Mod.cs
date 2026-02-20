@@ -151,13 +151,14 @@ namespace GenericModConfigMenu
 
         /// <summary>Open the menu which shows a list of configurable mods.</summary>
         /// <param name="scrollRow">The initial scroll position, represented by the row index at the top of the visible area.</param>
-        private void OpenListMenuNew(int? scrollRow = null)
+        /// <param name="focusRow">The row to focus in the navigator (for restoring selection after returning from a mod config).</param>
+        private void OpenListMenuNew(int? scrollRow = null, int? focusRow = null)
         {
-            Mod.ActiveConfigMenu = new ModConfigMenu(this.Config.ScrollSpeed, openModMenu: (mod, curScrollRow) => this.OpenModMenuNew(mod, page: null, listScrollRow: curScrollRow), openKeybindsMenu: currScrollRow => OpenKeybindsMenuNew( currScrollRow ), this.ConfigManager, this.Helper.GameContent.Load<Texture2D>(AssetManager.KeyboardButton), scrollRow);
+            Mod.ActiveConfigMenu = new ModConfigMenu(this.Config.ScrollSpeed, openModMenu: (mod, curScrollRow, curFocusRow) => this.OpenModMenuNew(mod, page: null, listScrollRow: curScrollRow, listFocusRow: curFocusRow), openKeybindsMenu: currScrollRow => OpenKeybindsMenuNew( currScrollRow ), this.ConfigManager, this.Helper.GameContent.Load<Texture2D>(AssetManager.KeyboardButton), scrollRow, focusRow);
         }
         private void OpenListMenu(int? scrollRow = null)
         {
-            var newMenu = new ModConfigMenu(this.Config.ScrollSpeed, openModMenu: (mod, curScrollRow) => this.OpenModMenuNew(mod, page: null, listScrollRow: curScrollRow), openKeybindsMenu: currScrollRow => OpenKeybindsMenuNew(currScrollRow), this.ConfigManager, this.Helper.GameContent.Load<Texture2D>(AssetManager.KeyboardButton), scrollRow); ;
+            var newMenu = new ModConfigMenu(this.Config.ScrollSpeed, openModMenu: (mod, curScrollRow, curFocusRow) => this.OpenModMenuNew(mod, page: null, listScrollRow: curScrollRow, listFocusRow: curFocusRow), openKeybindsMenu: currScrollRow => OpenKeybindsMenuNew(currScrollRow), this.ConfigManager, this.Helper.GameContent.Load<Texture2D>(AssetManager.KeyboardButton), scrollRow); ;
             if (Game1.activeClickableMenu is TitleMenu)
             {
                 TitleMenu.subMenu = newMenu;
@@ -175,10 +176,10 @@ namespace GenericModConfigMenu
                 scrollSpeed: this.Config.ScrollSpeed,
                 returnToList: () =>
                 {
-                    if (Game1.activeClickableMenu is TitleMenu)
-                        OpenListMenuNew(listScrollRow);
-                    else
+                    Mod.ActiveConfigMenu = null;
+                    if (!(Game1.activeClickableMenu is TitleMenu))
                         Mod.ActiveConfigMenu = null;
+                    OpenListMenuNew(listScrollRow);
                 }
             );
         }
@@ -208,7 +209,8 @@ namespace GenericModConfigMenu
         /// <param name="mod">The mod whose config menu to display.</param>
         /// <param name="page">The page to display within the mod's config menu.</param>
         /// <param name="listScrollRow">The scroll position to set in the mod list when returning to it, represented by the row index at the top of the visible area.</param>
-        private void OpenModMenuNew(IManifest mod, string page, int? listScrollRow)
+        /// <param name="listFocusRow">The row to focus in the mod list navigator when returning.</param>
+        private void OpenModMenuNew(IManifest mod, string page, int? listScrollRow, int listFocusRow = -1)
         {
             ModConfig config = this.ConfigManager.Get(mod, assert: true);
 
@@ -220,14 +222,18 @@ namespace GenericModConfigMenu
                 {
                     if (!(Game1.activeClickableMenu is TitleMenu))
                         Mod.ActiveConfigMenu = null;
-                    this.OpenModMenuNew(mod, newPage, listScrollRow);
+                    this.OpenModMenuNew(mod, newPage, listScrollRow, listFocusRow);
                 },
                 returnToList: () =>
                 {
-                    if (Game1.activeClickableMenu is TitleMenu)
-                        OpenListMenuNew(listScrollRow);
-                    else
+                    // Remove SpecificModConfigMenu from the chain
+                    Mod.ActiveConfigMenu = null;
+                    if (!(Game1.activeClickableMenu is TitleMenu))
+                        // In-game: also remove the stale ModConfigMenu whose navigator
+                        // has outdated PrevPad (wasn't updated while behind SpecificModConfigMenu)
                         Mod.ActiveConfigMenu = null;
+                    // Create fresh ModConfigMenu with synced PrevPad and restored focus
+                    OpenListMenuNew(listScrollRow, listFocusRow);
                 }
             );
         }
