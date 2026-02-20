@@ -234,6 +234,16 @@ namespace SpaceShared.UI
                 else
                     this.OpenDropdown.ActiveChoice = (this.OpenDropdown.ActiveChoice + 1) % count;
 
+                // Scroll the visible window to keep the selection visible
+                int maxVis = this.OpenDropdown.MaxValuesAtOnce;
+                if (this.OpenDropdown.ActiveChoice < this.OpenDropdown.ActivePosition)
+                    this.OpenDropdown.ActivePosition = this.OpenDropdown.ActiveChoice;
+                else if (this.OpenDropdown.ActiveChoice >= this.OpenDropdown.ActivePosition + maxVis)
+                    this.OpenDropdown.ActivePosition = this.OpenDropdown.ActiveChoice - maxVis + 1;
+
+                // Prevent Dropdown.Update() from overwriting our selection via mouse hit-test
+                this.OpenDropdown.GamepadNavigated = true;
+
                 this.OpenDropdown.Callback?.Invoke(this.OpenDropdown);
                 Game1.playSound("shiny4");
                 return;

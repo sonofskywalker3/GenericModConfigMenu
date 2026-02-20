@@ -1,7 +1,7 @@
 {
     "Name": "Generic Mod Config Menu",
     "Author": "spacechase0 (Android fork by sonofskywalker3)",
-    "Version": "1.16.0-android.5",
+    "Version": "1.16.0-android.6",
     "Description": "Adds an in-game UI to configure mods. Android fork with controller navigation.",
     "UniqueID": "spacechase0.GenericModConfigMenu",
     "EntryDll": "GenericModConfigMenu.dll",
