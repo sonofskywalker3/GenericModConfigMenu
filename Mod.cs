@@ -33,7 +33,6 @@ namespace GenericModConfigMenu
         private Button ConfigButton;
 
         private int countdown = 5;
-        private bool _loggedTitleDiag = false;
 
         /// <summary>Manages registered mod config menus.</summary>
         internal readonly ModConfigManager ConfigManager = new();
@@ -380,18 +379,7 @@ namespace GenericModConfigMenu
                 try { this.Ui?.Update(); }
                 finally { Game1.PopUIMode(); }
 
-                // Diagnostic: log viewport values once per title screen visit
-                if (!_loggedTitleDiag)
-                {
-                    _loggedTitleDiag = true;
-                    var tm = Game1.activeClickableMenu as TitleMenu;
-                    string btnY = tm?.buttons?.Count > 0 ? tm.buttons[0].bounds.Y.ToString() : "n/a";
-                    this.Monitor.Log($"[DIAG] viewport: {Game1.viewport.Width}x{Game1.viewport.Height}, " +
-                        $"uiViewport: {Game1.uiViewport.Width}x{Game1.uiViewport.Height}, " +
-                        $"zoom: {Game1.options.zoomLevel}, uiScale: {Game1.options.uiScale}, " +
-                        $"button pos: {this.ConfigButton?.Position}, " +
-                        $"TitleMenu btn[0] Y: {btnY}", LogLevel.Info);
-                }
+
             }
 
             if (wasConfigMenu && TitleMenu.subMenu == null)
@@ -426,10 +414,6 @@ namespace GenericModConfigMenu
         /// <param name="e">The event arguments.</param>
         private void OnMenuChanged(object sender, MenuChangedEventArgs e)
         {
-            // Reset diagnostic flag when leaving title screen
-            if (e.OldMenu is TitleMenu)
-                _loggedTitleDiag = false;
-
             if (e.NewMenu is GameMenu menu)
             {
                 OptionsPage page = (OptionsPage)menu.pages[GameMenu.optionsTab];
