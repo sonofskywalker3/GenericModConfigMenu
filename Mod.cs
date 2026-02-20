@@ -33,6 +33,7 @@ namespace GenericModConfigMenu
         private Button ConfigButton;
 
         private int countdown = 5;
+        private bool _loggedTitleDiag = false;
 
         /// <summary>Manages registered mod config menus.</summary>
         internal readonly ModConfigManager ConfigManager = new();
@@ -265,7 +266,7 @@ namespace GenericModConfigMenu
                 Texture2D tex = this.Helper.GameContent.Load<Texture2D>(AssetManager.ConfigButton);
                 this.ConfigButton = new Button(tex)
                 {
-                    LocalPosition = new Vector2(36, Game1.viewport.Height - 100),
+                    LocalPosition = new Vector2(36, Game1.uiViewport.Height - 100),
                     Callback = _ =>
                     {
                         Game1.playSound("newArtifact");
@@ -280,7 +281,7 @@ namespace GenericModConfigMenu
             {
                 // Gamepad support
                 Texture2D tex = this.Helper.GameContent.Load<Texture2D>(AssetManager.ConfigButton);
-                ClickableComponent button = new(new(0, Game1.viewport.Height - 100, tex.Width / 2, tex.Height / 2), "GMCM") // Why /2? Who knows
+                ClickableComponent button = new(new(0, Game1.uiViewport.Height - 100, tex.Width / 2, tex.Height / 2), "GMCM") // Why /2? Who knows
                 {
                     myID = 509800,
                     rightNeighborID = tm.buttons[0].myID,
@@ -371,7 +372,26 @@ namespace GenericModConfigMenu
             if (this.IsTitleMenuInteractable())
             {
                 SetupTitleMenuButton();
-                this.Ui?.Update();
+
+                // Update in UI mode so hover detection uses uiViewport coordinates
+                // (SMAPI's GenericModConfigFix redirects OnRendered to draw during
+                // RenderSteps.Menu which runs inside PushUIMode)
+                Game1.PushUIMode();
+                try { this.Ui?.Update(); }
+                finally { Game1.PopUIMode(); }
+
+                // Diagnostic: log viewport values once per title screen visit
+                if (!_loggedTitleDiag)
+                {
+                    _loggedTitleDiag = true;
+                    var tm = Game1.activeClickableMenu as TitleMenu;
+                    string btnY = tm?.buttons?.Count > 0 ? tm.buttons[0].bounds.Y.ToString() : "n/a";
+                    this.Monitor.Log($"[DIAG] viewport: {Game1.viewport.Width}x{Game1.viewport.Height}, " +
+                        $"uiViewport: {Game1.uiViewport.Width}x{Game1.uiViewport.Height}, " +
+                        $"zoom: {Game1.options.zoomLevel}, uiScale: {Game1.options.uiScale}, " +
+                        $"button pos: {this.ConfigButton?.Position}, " +
+                        $"TitleMenu btn[0] Y: {btnY}", LogLevel.Info);
+                }
             }
 
             if (wasConfigMenu && TitleMenu.subMenu == null)
@@ -389,7 +409,7 @@ namespace GenericModConfigMenu
         private void OnWindowResized(object sender, WindowResizedEventArgs e)
         {
             if ( this.ConfigButton != null )
-                this.ConfigButton.LocalPosition = new Vector2(this.ConfigButton.Position.X, Game1.viewport.Height - 100);
+                this.ConfigButton.LocalPosition = new Vector2(this.ConfigButton.Position.X, Game1.uiViewport.Height - 100);
         }
 
         /// <inheritdoc cref="IDisplayEvents.Rendered"/>
@@ -406,6 +426,10 @@ namespace GenericModConfigMenu
         /// <param name="e">The event arguments.</param>
         private void OnMenuChanged(object sender, MenuChangedEventArgs e)
         {
+            // Reset diagnostic flag when leaving title screen
+            if (e.OldMenu is TitleMenu)
+                _loggedTitleDiag = false;
+
             if (e.NewMenu is GameMenu menu)
             {
                 OptionsPage page = (OptionsPage)menu.pages[GameMenu.optionsTab];
