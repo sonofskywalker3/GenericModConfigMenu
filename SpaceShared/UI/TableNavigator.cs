@@ -38,12 +38,19 @@ namespace SpaceShared.UI
         private Dropdown OpenDropdown;
         private int DropdownOriginalChoice;
 
+        // Bottom button navigation (Cancel, Reset, Save, Save&Close)
+        private int FocusedButton = -1; // -1 = focus is in table, 0+ = index into BottomButtons
+        private bool FocusOnButtons => this.FocusedButton >= 0;
+
 
         /*********
         ** Accessors
         *********/
         /// <summary>Called when B is pressed outside a dropdown. Menu should go back/close.</summary>
         public Action OnBack { get; set; }
+
+        /// <summary>Bottom action buttons (Cancel, Reset, Save, Save&Close). Set by the menu.</summary>
+        public Label[] BottomButtons { get; set; }
 
 
         /*********
@@ -60,8 +67,8 @@ namespace SpaceShared.UI
             this.NeedsRebuild = true;
         }
 
-        /// <summary>Process gamepad input and snap cursor. Call BEFORE Ui.Update() in menu.update().</summary>
-        public void Update()
+        /// <summary>Process gamepad input. Call BEFORE Ui.Update() in menu.update().</summary>
+        public void HandleInput()
         {
             if (!Game1.options.gamepadControls)
                 return;
@@ -69,34 +76,54 @@ namespace SpaceShared.UI
             if (this.NeedsRebuild)
                 this.RebuildInteractiveRows();
 
-            if (this.InteractiveRows.Count == 0)
+            if (this.InteractiveRows.Count == 0 && (this.BottomButtons == null || this.BottomButtons.Length == 0))
                 return;
 
             var pad = Game1.input.GetGamePadState();
 
             // Initialize focus on first interactive row if not set
-            if (this.FocusedRow < 0 || !this.InteractiveRows.Contains(this.FocusedRow))
-                this.FocusedRow = this.InteractiveRows[0];
+            if (!this.FocusOnButtons && (this.FocusedRow < 0 || !this.InteractiveRows.Contains(this.FocusedRow)))
+            {
+                if (this.InteractiveRows.Count > 0)
+                    this.FocusedRow = this.InteractiveRows[0];
+            }
 
             // Track dropdown state from the Dropdown class's static field
             if (Dropdown.ActiveDropdown != null && this.OpenDropdown == null)
             {
-                // A dropdown just opened
                 this.OpenDropdown = Dropdown.ActiveDropdown;
                 this.DropdownOriginalChoice = this.OpenDropdown.ActiveChoice;
             }
             else if (Dropdown.ActiveDropdown == null && this.OpenDropdown != null)
             {
-                // Dropdown just closed
                 this.OpenDropdown = null;
             }
 
             this.HandleUpDown(pad);
             this.HandleLeftRight(pad);
             this.HandleB(pad);
-            this.SnapCursorToFocused();
 
             this.PrevPad = pad;
+        }
+
+        /// <summary>Snap cursor and ensure scroll position. Call AFTER Ui.Update() so element positions are fresh.</summary>
+        public void SnapAndScroll()
+        {
+            if (!Game1.options.gamepadControls)
+                return;
+
+            if (this.FocusOnButtons)
+            {
+                this.SnapCursorToButton();
+            }
+            else
+            {
+                this.EnsureFocusedVisible();
+                if (this.OpenDropdown != null)
+                    this.SnapCursorToDropdownItem();
+                else
+                    this.SnapCursorToFocused();
+            }
         }
 
 
@@ -195,9 +222,9 @@ namespace SpaceShared.UI
             if (!goUp && !goDown)
                 return;
 
+            // Dropdown navigation
             if (this.OpenDropdown != null)
             {
-                // Navigate within open dropdown
                 int count = this.OpenDropdown.Choices.Length;
                 if (count <= 0)
                     return;
@@ -208,57 +235,90 @@ namespace SpaceShared.UI
                     this.OpenDropdown.ActiveChoice = (this.OpenDropdown.ActiveChoice + 1) % count;
 
                 this.OpenDropdown.Callback?.Invoke(this.OpenDropdown);
-
-                // Move mouse to the selected item in the dropdown's visual area
-                this.SnapCursorToDropdownItem();
                 Game1.playSound("shiny4");
                 return;
             }
 
-            // Navigate between rows
+            bool hasButtons = this.BottomButtons != null && this.BottomButtons.Length > 0;
+
+            // Navigation when focus is on bottom buttons
+            if (this.FocusOnButtons)
+            {
+                if (goUp)
+                {
+                    // Move back to last table row
+                    this.FocusedButton = -1;
+                    if (this.InteractiveRows.Count > 0)
+                        this.FocusedRow = this.InteractiveRows[this.InteractiveRows.Count - 1];
+                    Game1.playSound("shiny4");
+                }
+                // Down on buttons does nothing (or could wrap to top)
+                return;
+            }
+
+            // Navigation within table rows
             int pos = this.FindCurrentPosition();
             if (goUp)
             {
                 if (pos <= 0)
-                    pos = this.InteractiveRows.Count; // wrap to end
-                this.FocusedRow = this.InteractiveRows[pos - 1];
+                {
+                    // At top of table — wrap to bottom buttons if available, else wrap to last row
+                    if (hasButtons)
+                    {
+                        this.FocusedButton = 0;
+                        Game1.playSound("shiny4");
+                        return;
+                    }
+                    else
+                    {
+                        this.FocusedRow = this.InteractiveRows[this.InteractiveRows.Count - 1];
+                    }
+                }
+                else
+                {
+                    this.FocusedRow = this.InteractiveRows[pos - 1];
+                }
             }
-            else
+            else // goDown
             {
                 if (pos < 0 || pos >= this.InteractiveRows.Count - 1)
-                    pos = -1; // wrap to start
-                this.FocusedRow = this.InteractiveRows[pos + 1];
+                {
+                    // At bottom of table — move to bottom buttons if available, else wrap to first row
+                    if (hasButtons)
+                    {
+                        this.FocusedButton = 0;
+                        Game1.playSound("shiny4");
+                        return;
+                    }
+                    else
+                    {
+                        this.FocusedRow = this.InteractiveRows[0];
+                    }
+                }
+                else
+                {
+                    this.FocusedRow = this.InteractiveRows[pos + 1];
+                }
             }
 
-            this.EnsureFocusedVisible();
             Game1.playSound("shiny4");
         }
 
         private void HandleLeftRight(GamePadState pad)
         {
-            if (this.OpenDropdown != null)
-                return; // Left/Right does nothing in dropdown mode
-
             // D-pad edge detection
             bool dpadLeft = pad.DPad.Left == ButtonState.Pressed && this.PrevPad.DPad.Left == ButtonState.Released;
             bool dpadRight = pad.DPad.Right == ButtonState.Pressed && this.PrevPad.DPad.Right == ButtonState.Released;
 
-            // Left stick horizontal
+            // Left stick horizontal (edge-only)
             float lsX = pad.ThumbSticks.Left.X;
             bool stickLeft = false, stickRight = false;
-            // Reuse the same hold-to-repeat tracking (overloaded for horizontal)
-            // For simplicity, only handle edge detection for left/right on d-pad
-            // Stick left/right will use a simpler threshold check
             if (Math.Abs(lsX) > StickThreshold && Math.Abs(lsX) > Math.Abs(pad.ThumbSticks.Left.Y))
             {
-                // Only fire horizontal if stick is more horizontal than vertical
-                int hDir = lsX < 0 ? 3 : 4;
-                // We need separate tracking for horizontal — check if this is a new direction
-                // For now, only D-pad handles left/right repeating. Stick horizontal is edge-only.
                 if (Math.Abs(this.PrevPad.ThumbSticks.Left.X) <= StickThreshold)
                 {
-                    stickLeft = hDir == 3;
-                    stickRight = hDir == 4;
+                    stickLeft = lsX < 0;
+                    stickRight = lsX > 0;
                 }
             }
 
@@ -266,6 +326,21 @@ namespace SpaceShared.UI
             bool goRight = dpadRight || stickRight;
             if (!goLeft && !goRight)
                 return;
+
+            // Navigate between bottom buttons with Left/Right
+            if (this.FocusOnButtons && this.BottomButtons != null)
+            {
+                int count = this.BottomButtons.Length;
+                if (goRight)
+                    this.FocusedButton = Math.Min(this.FocusedButton + 1, count - 1);
+                else
+                    this.FocusedButton = Math.Max(this.FocusedButton - 1, 0);
+                Game1.playSound("shiny4");
+                return;
+            }
+
+            if (this.OpenDropdown != null)
+                return; // Left/Right does nothing in dropdown mode
 
             if (this.FocusedRow < 0 || this.FocusedRow >= this.Table.RowData.Count)
                 return;
@@ -326,16 +401,20 @@ namespace SpaceShared.UI
                 return;
             }
 
+            // If on buttons, move back to table
+            if (this.FocusOnButtons)
+            {
+                this.FocusedButton = -1;
+                Game1.playSound("bigDeSelect");
+                return;
+            }
+
             this.OnBack?.Invoke();
         }
 
         private void SnapCursorToFocused()
         {
             if (this.FocusedRow < 0 || this.FocusedRow >= this.Table.RowData.Count)
-                return;
-
-            // Don't move cursor if dropdown is open — dropdown item snap handles it
-            if (this.OpenDropdown != null)
                 return;
 
             var target = GetSnapTarget(this.Table.RowData[this.FocusedRow]);
@@ -346,15 +425,41 @@ namespace SpaceShared.UI
             Game1.setMousePosition(bounds.Center.X, bounds.Center.Y);
         }
 
+        private void SnapCursorToButton()
+        {
+            if (this.BottomButtons == null || this.FocusedButton < 0 || this.FocusedButton >= this.BottomButtons.Length)
+                return;
+
+            var btn = this.BottomButtons[this.FocusedButton];
+            if (btn.IsHidden())
+            {
+                // Skip hidden buttons (e.g., Reset hidden on sub-pages)
+                // Try to move to next visible button
+                for (int i = 0; i < this.BottomButtons.Length; i++)
+                {
+                    if (!this.BottomButtons[i].IsHidden())
+                    {
+                        this.FocusedButton = i;
+                        btn = this.BottomButtons[i];
+                        break;
+                    }
+                }
+                if (btn.IsHidden())
+                    return;
+            }
+
+            var bounds = btn.Bounds;
+            Game1.setMousePosition(bounds.Center.X, bounds.Center.Y);
+        }
+
         private void SnapCursorToDropdownItem()
         {
             if (this.OpenDropdown == null)
                 return;
 
-            // Position cursor on the currently selected dropdown item
             int selected = this.OpenDropdown.ActiveChoice;
             int activePos = this.OpenDropdown.ActivePosition;
-            int itemHeight = this.OpenDropdown.Height; // each item is the dropdown's height
+            int itemHeight = this.OpenDropdown.Height;
 
             int tall = Math.Min(this.OpenDropdown.MaxValuesAtOnce, this.OpenDropdown.Choices.Length - activePos) * itemHeight;
             int drawY = Math.Min((int)this.OpenDropdown.Position.Y, Game1.uiViewport.Height - tall);
@@ -370,10 +475,9 @@ namespace SpaceShared.UI
 
         private void EnsureFocusedVisible()
         {
-            if (this.FocusedRow < 0)
+            if (this.FocusOnButtons || this.FocusedRow < 0)
                 return;
 
-            // Check if the focused element is currently off-screen
             var rows = this.Table.RowData;
             if (this.FocusedRow >= rows.Count)
                 return;
@@ -382,6 +486,7 @@ namespace SpaceShared.UI
             if (target == null)
                 return;
 
+            // Element positions are now fresh (called after Ui.Update/Table.Update)
             float tableTop = this.Table.Position.Y;
             float tableBottom = tableTop + this.Table.Height;
             float elementTop = target.Position.Y;
@@ -389,14 +494,15 @@ namespace SpaceShared.UI
 
             if (elementTop < tableTop)
             {
-                // Element above visible area — scroll up
-                this.Table.Scrollbar.ScrollBy(-1);
-                // May need multiple scrolls for large offsets — recursive call next frame
+                // Element above visible area — scroll up by the right amount
+                int rowsNeeded = (int)Math.Ceiling((tableTop - elementTop) / this.Table.RowHeight);
+                this.Table.Scrollbar.ScrollBy(-rowsNeeded);
             }
             else if (elementBottom > tableBottom)
             {
-                // Element below visible area — scroll down
-                this.Table.Scrollbar.ScrollBy(1);
+                // Element below visible area — scroll down by the right amount
+                int rowsNeeded = (int)Math.Ceiling((elementBottom - tableBottom) / this.Table.RowHeight);
+                this.Table.Scrollbar.ScrollBy(rowsNeeded);
             }
         }
     }

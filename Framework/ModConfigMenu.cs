@@ -264,8 +264,9 @@ namespace GenericModConfigMenu.Framework
         public override void update(GameTime time)
         {
             base.update(time);
-            this.Navigator?.Update();
+            this.Navigator?.HandleInput();
             this.Ui.Update();
+            this.Navigator?.SnapAndScroll();
 
             // Hide placeholder when typing
             if (this.SearchPlaceholder != null)

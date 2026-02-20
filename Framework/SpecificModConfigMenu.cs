@@ -163,7 +163,7 @@ namespace GenericModConfigMenu.Framework
                 }
             }
             this.Ui.AddChild(this.Table);
-            this.AddDefaultLabels(null);
+            var bottomButtons = this.AddDefaultLabels(null);
 
             // We need to update widgets at least once so ComplexModOptionWidget's get initialized
             this.Table.ForceUpdateEvenHidden();
@@ -173,7 +173,8 @@ namespace GenericModConfigMenu.Framework
             // Controller navigation
             this.Navigator = new TableNavigator(this.Table)
             {
-                OnBack = () => this.Cancel()
+                OnBack = () => this.Cancel(),
+                BottomButtons = bottomButtons
             };
         }
 
@@ -460,7 +461,7 @@ namespace GenericModConfigMenu.Framework
 
             }
             this.Ui.AddChild(this.Table);
-            this.AddDefaultLabels(this.Manifest);
+            var bottomButtons = this.AddDefaultLabels(this.Manifest);
 
             // We need to update widgets at least once so ComplexModOptionWidget's get initialized
             this.Table.ForceUpdateEvenHidden();
@@ -468,7 +469,8 @@ namespace GenericModConfigMenu.Framework
             // Controller navigation
             this.Navigator = new TableNavigator(this.Table)
             {
-                OnBack = () => this.Cancel()
+                OnBack = () => this.Cancel(),
+                BottomButtons = bottomButtons
             };
         }
 
@@ -509,8 +511,10 @@ namespace GenericModConfigMenu.Framework
         {
             base.update(time);
             if (!this.IsBindingKey)
-                this.Navigator?.Update();
+                this.Navigator?.HandleInput();
             this.Ui.Update();
+            if (!this.IsBindingKey)
+                this.Navigator?.SnapAndScroll();
 
             // TODO: This will be different if a dropdown is open
             if (Game1.input.GetGamePadState().ThumbSticks.Right.Y != 0)
@@ -587,7 +591,9 @@ namespace GenericModConfigMenu.Framework
             this.Table.LocalPosition = new Vector2((Game1.uiViewport.Width - this.Table.Size.X) / 2, (Game1.uiViewport.Height - this.Table.Size.Y) / 2);
             this.Table.Scrollbar.Update();
             this.Ui.AddChild(this.Table);
-            this.AddDefaultLabels(this.Manifest);
+            var resizedButtons = this.AddDefaultLabels(this.Manifest);
+            if (this.Navigator != null)
+                this.Navigator.BottomButtons = resizedButtons;
 
             this.ActiveKeybindOverlay?.OnWindowResized();
         }
@@ -615,7 +621,7 @@ namespace GenericModConfigMenu.Framework
         /*********
         ** Private methods
         *********/
-        private void AddDefaultLabels(IManifest modManifest)
+        private Label[] AddDefaultLabels(IManifest modManifest)
         {
             // add page title
             {
@@ -689,6 +695,8 @@ namespace GenericModConfigMenu.Framework
                 // add to UI
                 foreach (var button in buttons)
                     this.Ui.AddChild(button);
+
+                return buttons;
             }
         }
 
