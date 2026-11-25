@@ -28,3 +28,7 @@ Download the latest release and extract it to your `Mods/` folder, replacing the
 ## License
 
 MIT — see [LICENSE](LICENSE). Original work by spacechase0, controller navigation by sonofskywalker3.
+
+## Artwork
+
+Where each piece of artwork comes from and how it was made: [ART-SOURCES.md](ART-SOURCES.md).
